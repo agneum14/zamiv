@@ -7,6 +7,7 @@ namespace fs = std::filesystem;
 #include "config.hpp"
 #include "cxxopts.hpp"
 
+// contains sprite and other useful image data
 class Image {
  private:
   sf::Texture tex;
@@ -16,6 +17,7 @@ class Image {
   sf::Sprite sprite;
   bool exists = false;
   float width, height;
+  float scale = 1;
 
   Image(std::string filepath) {
     path = filepath;
@@ -33,8 +35,11 @@ int indx = 0;
 sf::RenderWindow win;
 std::vector<Image*> imgs;
 bool fullscreen;
+char mode;
 
-void draw_single(std::vector<Image*>*);
+// prototypes
+void draw_single();
+void scale_fit(Image* pimg, float win_width, float win_height);
 void toggle_fullscreen(bool* fullscreen);
 
 int main(int argc, char** argv) {
@@ -50,7 +55,7 @@ int main(int argc, char** argv) {
     ("g,gallery", "Start in gallery mode")
     ("h,help", "Display usage")
     ("m", "Set scaling mode: [n]one, [f]it, [z]oom",
-     cxxopts::value<char>()->default_value("n"), "MODE")
+     cxxopts::value<std::string>()->default_value("n"), "MODE")
     ("path", "", cxxopts::value<std::string>())
     ;
   // clang-format on
@@ -82,6 +87,12 @@ int main(int argc, char** argv) {
 
   // set non-fatal options
   fullscreen = !result.count("fullscreen");
+
+  mode = result["m"].as<std::string>().at(0);
+  if (mode != 'n' && mode != 'f' && mode != 'z') {
+    std::cout << "warning: invalid MODE, defaulting to 'n'" << std::endl;
+    mode = 'n';
+  }
 
   if (fs::is_directory(path))
     for (const auto& entry : fs::directory_iterator(path_str)) {
@@ -126,7 +137,7 @@ int main(int argc, char** argv) {
 
     // drawing
     win.clear(bg_color);
-    draw_single(&imgs);
+    draw_single();
     win.display();
   }
 
@@ -134,15 +145,31 @@ int main(int argc, char** argv) {
 }
 
 // draw single image
-void draw_single(std::vector<Image*>* imgs) {
-  float xc = win.getView().getSize().x / 2;
-  float yc = win.getView().getSize().y / 2;
-  Image* pimg = imgs->at(indx);
-  int x = xc - pimg->width / 2;
-  int y = yc - pimg->height / 2;
+void draw_single() {
+  float win_width = win.getView().getSize().x;
+  float win_height = win.getView().getSize().y;
+  Image* pimg = imgs.at(indx);
+
+  if (pimg->width > win_width || pimg->height > win_height || mode == 'f')
+    scale_fit(pimg, win_width, win_height);
+
+  int x = (win_width - pimg->width * pimg->scale) / 2;
+  int y = (win_height - pimg->height * pimg->scale) / 2;
 
   pimg->sprite.setPosition(x, y);
   win.draw(pimg->sprite);
+}
+
+// scale image to fit window dimensions
+void scale_fit(Image* pimg, float win_width, float win_height) {
+  float ratio, w_ratio, h_ratio;
+
+  w_ratio = win_width / pimg->height;
+  h_ratio = win_height / pimg->width;
+  ratio = (w_ratio > h_ratio) ? h_ratio : w_ratio;
+
+  pimg->scale = ratio;
+  pimg->sprite.setScale(ratio, ratio);
 }
 
 // create window, fullscreen or otherwise
