@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     ("g,gallery", "Start in gallery mode")
     ("h,help", "Display usage")
     ("m", "Set scaling mode: [n]one, [f]it, [z]oom",
-     cxxopts::value<std::string>()->default_value("n"), "MODE")
+     cxxopts::value<std::string>()->default_value(MODE), "MODE")
     ("path", "", cxxopts::value<std::string>())
     ;
   // clang-format on

@@ -6,3 +6,6 @@
 
 // window background color RGB
 static const sf::Color bg_color(0, 0, 0);
+
+// default scaling mode
+#define MODE "n"
