@@ -1,11 +1,16 @@
 CC:= g++
-CFLAGS:= -Wall -Wextra -Werror -pedantic -g
+CFLAGS:= -Wall -Wextra -pedantic -g
+LIBS:= -lsfml-system -lsfml-window -lsfml-graphics
 
-zamiv: zamiv.o cxxopts.hpp
-	$(CC) $(CFLAGS) -o $@ $?
+zamiv: zamiv.o config.hpp cxxopts.hpp
+	cp -n config.def.hpp config.hpp
+	$(CC) $(CFLAGS) $(LIBS) -o $@ zamiv.o
 
-zamiv.o: zamiv.cpp
-	$(CC) $(CFLAGS) -c $?
+zamiv.o: zamiv.cpp config.hpp
+	$(CC) $(CFLAGS) -c zamiv.cpp
+
+config.hpp: config.def.hpp
+	cp -n $? $@
 
 clean:
 	rm zamiv *.o
