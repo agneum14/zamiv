@@ -1,5 +1,4 @@
 #include <SFML/Graphics.hpp>
-#include <SFML/Graphics/Rect.hpp>
 #include <filesystem>
 namespace fs = std::filesystem;
 #include <iostream>
@@ -11,17 +10,20 @@ namespace fs = std::filesystem;
 class Image {
  private:
   sf::Texture tex;
+  std::string path;
 
  public:
-  std::string path;
   sf::Sprite sprite;
   bool exists = false;
+  float width, height;
 
   Image(std::string filepath) {
     path = filepath;
     if (!tex.loadFromFile(path)) return;
     exists = true;
 
+    width = tex.getSize().x;
+    height = tex.getSize().y;
     sprite.setTexture(tex);
   }
 };
@@ -84,8 +86,10 @@ int main(int argc, char** argv) {
   if (fs::is_directory(path))
     for (const auto& entry : fs::directory_iterator(path_str)) {
       Image* img = new Image(entry.path());
-      if (img->exists) imgs.push_back(img);
-      else delete img;
+      if (img->exists)
+        imgs.push_back(img);
+      else
+        delete img;
     }
   else
     imgs.push_back(new Image(path_str));
@@ -102,14 +106,19 @@ int main(int argc, char** argv) {
   while (win.isOpen()) {
     sf::Event event;
     while (win.pollEvent(event)) {
-      // key bindings
       switch (event.type) {
+        // key bindings
         case sf::Event::KeyPressed:
           if (event.key.code == sf::Keyboard::Q)
             win.close();
           else if (event.key.code == sf::Keyboard::F)
             toggle_fullscreen(&fullscreen);
           break;
+        // update render area to window dimensions on resize
+        case sf::Event::Resized: {
+          sf::FloatRect view(0, 0, event.size.width, event.size.height);
+          win.setView(sf::View(view));
+        }
         default:
           break;
       }
@@ -126,15 +135,14 @@ int main(int argc, char** argv) {
 
 // draw single image
 void draw_single(std::vector<Image*>* imgs) {
-  int xc = sf::VideoMode::getDesktopMode().width / 2;
-  int yc = sf::VideoMode::getDesktopMode().height / 2;
-  sf::Sprite* spref = &(imgs->at(indx)->sprite);
-  sf::FloatRect e_rect = spref->getGlobalBounds();
-  int x = xc - e_rect.width / 2;
-  int y = yc - e_rect.height / 2;
+  float xc = win.getView().getSize().x / 2;
+  float yc = win.getView().getSize().y / 2;
+  Image* pimg = imgs->at(indx);
+  int x = xc - pimg->width / 2;
+  int y = yc - pimg->height / 2;
 
-  spref->setPosition(x, y);
-  win.draw(*spref);
+  pimg->sprite.setPosition(x, y);
+  win.draw(pimg->sprite);
 }
 
 // create window, fullscreen or otherwise
