@@ -9,3 +9,6 @@ static const sf::Color bg_color(0, 0, 0);
 
 // default scaling mode
 #define MODE "n"
+
+// bilinear or nearest pixel interpolation
+#define BILINEAR true

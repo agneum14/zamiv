@@ -25,6 +25,7 @@ class Image {
 
     width = tex.getSize().x;
     height = tex.getSize().y;
+    tex.setSmooth(true);
     sprite.setTexture(tex);
   }
 };
