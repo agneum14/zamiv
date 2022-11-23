@@ -30,7 +30,7 @@ class Image {
 };
 
 // pollute the namespace
-int indx = 0;
+unsigned int indx = 0;
 sf::RenderWindow win;
 std::vector<Image*> imgs;
 bool fullscreen;
@@ -118,10 +118,22 @@ int main(int argc, char** argv) {
       switch (event.type) {
         // key bindings
         case sf::Event::KeyPressed:
-          if (event.key.code == sf::Keyboard::Q)
-            win.close();
-          else if (event.key.code == sf::Keyboard::F)
-            toggle_fullscreen();
+          switch (event.key.code) {
+            case sf::Keyboard::Q:
+              win.close();
+              break;
+            case sf::Keyboard::F:
+              toggle_fullscreen();
+              break;
+            case sf::Keyboard::N:
+              if (indx < imgs.size() - 1) indx++;
+              break;
+            case sf::Keyboard::P:
+              if (indx > 0) indx--;
+              break;
+            default:
+              break;
+          }
           break;
         // update render area to window dimensions on resize
         case sf::Event::Resized: {
