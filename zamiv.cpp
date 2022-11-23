@@ -17,7 +17,6 @@ class Image {
   sf::Sprite sprite;
   bool exists = false;
   float width, height;
-  float scale = 1;
 
   Image(std::string filepath) {
     path = filepath;
@@ -39,8 +38,7 @@ char mode;
 
 // prototypes
 void draw_single();
-void scale_fit(Image* pimg, float win_width, float win_height);
-void toggle_fullscreen(bool* fullscreen);
+void toggle_fullscreen();
 
 int main(int argc, char** argv) {
   std::string path_str;
@@ -111,7 +109,7 @@ int main(int argc, char** argv) {
   }
 
   // create window
-  toggle_fullscreen(&fullscreen);
+  toggle_fullscreen();
   win.setVerticalSyncEnabled(true);
 
   while (win.isOpen()) {
@@ -123,7 +121,7 @@ int main(int argc, char** argv) {
           if (event.key.code == sf::Keyboard::Q)
             win.close();
           else if (event.key.code == sf::Keyboard::F)
-            toggle_fullscreen(&fullscreen);
+            toggle_fullscreen();
           break;
         // update render area to window dimensions on resize
         case sf::Event::Resized: {
@@ -146,42 +144,51 @@ int main(int argc, char** argv) {
 
 // draw single image
 void draw_single() {
-  float win_width = win.getView().getSize().x;
-  float win_height = win.getView().getSize().y;
-  Image* pimg = imgs.at(indx);
+  float win_width, win_height;
+  float width_ratio, height_ratio;
+  Image* pimg;
+  float x_scale = 1, y_scale = 1;
+  float x, y;
 
-  if (pimg->width > win_width || pimg->height > win_height || mode == 'f')
-    scale_fit(pimg, win_width, win_height);
+  win_width = win.getView().getSize().x;
+  win_height = win.getView().getSize().y;
+  pimg = imgs.at(indx);
+  width_ratio = win_width / pimg->width;
+  height_ratio = win_height / pimg->height;
 
-  int x = (win_width - pimg->width * pimg->scale) / 2;
-  int y = (win_height - pimg->height * pimg->scale) / 2;
+  // set scale factors depending on scaling mode
+  switch (mode) {
+    case 'n':
+      if (!(pimg->width > win_width || pimg->height > win_height)) break;
+      // fall through
+    case 'f':
+      x_scale = (width_ratio > height_ratio) ? height_ratio : width_ratio;
+      y_scale = x_scale;
+      break;
+    case 'z':
+      x_scale = (width_ratio < height_ratio) ? height_ratio : width_ratio;
+      y_scale = x_scale;
+  }
+
+  pimg->sprite.setScale(x_scale, y_scale);
+
+  x = (win_width - pimg->width * x_scale) / 2;
+  y = (win_height - pimg->height * x_scale) / 2;
 
   pimg->sprite.setPosition(x, y);
   win.draw(pimg->sprite);
 }
 
-// scale image to fit window dimensions
-void scale_fit(Image* pimg, float win_width, float win_height) {
-  float ratio, w_ratio, h_ratio;
-
-  w_ratio = win_width / pimg->height;
-  h_ratio = win_height / pimg->width;
-  ratio = (w_ratio > h_ratio) ? h_ratio : w_ratio;
-
-  pimg->scale = ratio;
-  pimg->sprite.setScale(ratio, ratio);
-}
-
 // create window, fullscreen or otherwise
-void toggle_fullscreen(bool* fullscreen) {
-  if (*fullscreen) {
-    *fullscreen = false;
+void toggle_fullscreen() {
+  if (fullscreen) {
+    fullscreen = false;
     win.create(sf::VideoMode(WIDTH, HEIGHT), "zamiv");
   } else {
     int width = sf::VideoMode::getDesktopMode().width;
     int height = sf::VideoMode::getDesktopMode().height;
 
-    *fullscreen = true;
+    fullscreen = true;
     win.create(sf::VideoMode(width, height), "zamiv", sf::Style::Fullscreen);
   }
 }
