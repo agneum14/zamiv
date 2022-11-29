@@ -1,7 +1,9 @@
 #include <SFML/Graphics.hpp>
 #include <filesystem>
 namespace fs = std::filesystem;
+#include <atomic>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include "config.hpp"
@@ -31,9 +33,10 @@ class Image {
 };
 
 // pollute the namespace
-unsigned int indx = 0;
 sf::RenderWindow win;
+unsigned int indx = 0;
 std::vector<Image*> imgs;
+std::atomic_uint imgs_size(0);
 bool fullscreen;
 char mode;
 
@@ -93,21 +96,24 @@ int main(int argc, char** argv) {
     mode = 'n';
   }
 
-  if (fs::is_directory(path))
-    for (const auto& entry : fs::directory_iterator(path_str)) {
-      Image* img = new Image(entry.path());
-      if (img->exists)
-        imgs.push_back(img);
-      else
-        delete img;
-    }
-  else
-    imgs.push_back(new Image(path_str));
+  // concurrently load images into memory
+  bool ilt_joined(false);
+  std::atomic<bool> ilt_done(false);
+  std::thread img_load_thread([path, path_str, &ilt_done]() {
+    if (fs::is_directory(path))
+      for (const auto& entry : fs::directory_iterator(path_str)) {
+        Image* img = new Image(entry.path());
+        if (img->exists) {
+          imgs.push_back(img);
+          imgs_size++;
+        } else
+          delete img;
+      }
+    else
+      imgs.push_back(new Image(path_str));
 
-  if (!imgs.size()) {
-    std::cout << "error: no images to display" << std::endl;
-    exit(1);
-  }
+    ilt_done = true;
+  });
 
   // create window
   toggle_fullscreen();
@@ -121,13 +127,14 @@ int main(int argc, char** argv) {
         case sf::Event::KeyPressed:
           switch (event.key.code) {
             case sf::Keyboard::Q:
+              if (!ilt_joined) img_load_thread.detach();
               win.close();
               break;
             case sf::Keyboard::F:
               toggle_fullscreen();
               break;
             case sf::Keyboard::N:
-              if (indx < imgs.size() - 1) indx++;
+              if (indx < imgs_size - 1) indx++;
               break;
             case sf::Keyboard::P:
               if (indx > 0) indx--;
@@ -143,6 +150,16 @@ int main(int argc, char** argv) {
         }
         default:
           break;
+      }
+    }
+
+    // check if no images were loaded
+    if (ilt_done && !ilt_joined) {
+      img_load_thread.join();
+      ilt_joined = true;
+      if (!imgs_size) {
+        std::cout << "error: no images to display" << std::endl;
+        exit(1);
       }
     }
 
