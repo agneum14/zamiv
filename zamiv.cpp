@@ -27,7 +27,7 @@ class Image {
 
     width = tex.getSize().x;
     height = tex.getSize().y;
-    tex.setSmooth(true);
+    tex.setSmooth(BILINEAR);
     sprite.setTexture(tex);
   }
 };
@@ -35,6 +35,7 @@ class Image {
 // pollute the namespace
 sf::RenderWindow win;
 unsigned int indx = 0;
+std::vector<std::string> paths;
 std::vector<Image*> imgs;
 std::atomic_uint imgs_size(0);
 bool fullscreen;
@@ -96,21 +97,26 @@ int main(int argc, char** argv) {
     mode = 'n';
   }
 
+  // add image path strings to vector and sort alphabetically
+  if (fs::is_directory(path)) {
+    for (const auto& entry : fs::directory_iterator(path_str))
+      paths.push_back(entry.path());
+    std::sort(paths.begin(), paths.end());
+  } else if (fs::is_regular_file(path))
+    paths.push_back(path_str);
+
   // concurrently load images into memory
   bool ilt_joined(false);
   std::atomic<bool> ilt_done(false);
   std::thread img_load_thread([path, path_str, &ilt_done]() {
-    if (fs::is_directory(path))
-      for (const auto& entry : fs::directory_iterator(path_str)) {
-        Image* img = new Image(entry.path());
-        if (img->exists) {
-          imgs.push_back(img);
-          imgs_size++;
-        } else
-          delete img;
-      }
-    else
-      imgs.push_back(new Image(path_str));
+    for (std::string p : paths) {
+      Image* img = new Image(p);
+      if (img->exists) {
+        imgs.push_back(img);
+        imgs_size++;
+      } else
+        delete img;
+    }
 
     ilt_done = true;
   });
